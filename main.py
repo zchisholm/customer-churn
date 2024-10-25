@@ -3,14 +3,16 @@ import pandas as pd
 import pickle
 import numpy as np
 import os
-from openai import OpenAI
+from  openai import OpenAI
+
+#openai.base_url="https://api.groq.com/openai/v1"
+#openai.api_key = os.environ["GROQ_API_KEY"]
 
 
 client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=os.environ["GROQ_API_KEY"]
 )
-
 # Loadiong the Models
 def load_model(filename):
   with open(filename, "rb") as file:
@@ -111,7 +113,7 @@ def explain_prediction(probability, input_dict, surname):
     print("EXPLANATION PROMPT:", prompt)
 
     # Generate the explanation using the language model
-    raw_response = client.chat_completions.create(
+    raw_response = client.chat.completions.create(
         model="llama-3.2-3b-preview",
         messages=[{
             "role": "user",
@@ -120,7 +122,7 @@ def explain_prediction(probability, input_dict, surname):
     )
 
     # Return the content of the generated response
-    return raw_response.choices[0].message["content"]
+    return raw_response.choices[0].message.content
 
 
 # Title of the app
