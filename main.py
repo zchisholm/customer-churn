@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import os
 from  openai import OpenAI
+import utils as ut
 
 #openai.base_url="https://api.groq.com/openai/v1"
 #openai.api_key = os.environ["GROQ_API_KEY"]
@@ -61,11 +62,16 @@ def make_predictions(input_df, input_dict):
 
     avg_probability = np.mean(list(probabilities.values()))
 
-    st.markdown("### Model Probabilities")
-    for model, prob in probabilities.items():
-        st.write(f"{model}: {prob}")
+    col1, col2 = st.columns(2)
 
-    st.write(f"Average Probability: {avg_probability}")
+    with col1:
+        fig = ut.create_gauge_chart(avg_probability)
+        st.plotly_chart(fig, use_container_width=True)
+        st.write(f"The customer has a {avg_probability:.2%} probability of churning.")
+
+    with col2:
+        fig_probs = ut.create_model_probability_chart(probabilities)
+        st.plotly_chart(fig_probs, use_container_width=True)
 
     return avg_probability
 
@@ -124,6 +130,35 @@ def explain_prediction(probability, input_dict, surname):
     # Return the content of the generated response
     return raw_response.choices[0].message.content
 
+def generate_email(probability, input_dict, explanation, surname):
+    prompt = f"""You are a manager at Bank of Z. You are responsible for ensuring customers stay with the bank and are incentivized with various offers.
+
+    You noticed a customer named {surname} has a {round(probability * 100, 1)}% probability of churning.
+
+    Here is the customer's information:
+    {input_dict}
+
+    Here is some explanation as to why the customer might be at risk of churning:
+    {explanation}
+
+    Generate an email to the customer based on their information, asking them to stay if they are at risk of churning, or offering them incentives so that they become more loyal to the bank.
+
+    Make sure to list out a set of incentives to stay based on their information, in bullet point format. Don't ever mention the probability of churning, or the machine learning model to the customer.
+    """
+
+    raw_response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+    )
+
+    print("\nEMAIL PROMPT", prompt)
+
+    return raw_response.choices[0].message.content
 
 # Title of the app
 st.title("Customer Churn Prediction")
@@ -223,3 +258,12 @@ if selected_customer_option:
     st.subheader("Explanation of Prediction")
 
     st.markdown(explanation)
+
+    # Email
+    email = generate_email(avg_probability, input_dict, explanation, selected_customer['Surname'])
+    
+    st.markdown("---")
+    
+    st.subheader("Personalized Email")
+    
+    st.markdown(email)
